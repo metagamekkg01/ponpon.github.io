@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Star wo Mezase! Flagship 8 - Stat Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #020617; font-family: 'Meiryo', sans-serif; width: 100vw; height: 100vh; border-bottom: 38px solid #E60012; box-sizing: border-box; }
+        canvas { display: block; vertical-align: bottom; }
+        #menu { position: absolute; width: 100%; height: 100%; background: #020617; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; color: white; overflow-y: auto; padding: 40px 0; }
+        .menu-title { font-size: 32px; font-weight: bold; margin-bottom: 15px; color: #fbbf24; }
+        #active-player-display { background: rgba(255,255,255,0.05); padding: 15px 30px; border-radius: 20px; border: 2px solid #3b82f6; margin-bottom: 20px; text-align: center; }
+        #current-name { font-size: 24px; color: #fbbf24; font-weight: bold; margin-bottom: 10px; display: block; }
+        .mgmt-open-btn { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        #mgmt-overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; display: none; align-items: center; justify-content: center; }
+        #mgmt-window { background: #ffffff; width: 90%; max-width: 500px; max-height: 80%; border-radius: 20px; border: 3px solid #3b82f6; padding: 25px; display: flex; flex-direction: column; color: #0f172a; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+        .member-row { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; margin-bottom: 8px; padding: 10px 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .member-row.active { border-color: #3b82f6; background: #eff6ff; }
+        .del-btn { background: #E60012; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 95%; max-width: 900px; }
+        .level-btn { padding: 20px; font-size: 20px; font-weight: bold; border-radius: 40px; border: none; cursor: pointer; transition: 0.2s; color: white; position: relative; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+        .star-mark { position: absolute; top: 15px; right: 20px; font-size: 13px; color: #fbbf24; letter-spacing: -2px; display: flex; flex-direction: column; align-items: flex-end; }
+        .crown-mark { position: absolute; top: 65px; right: 20px; font-size: 20px; color: #fde047; filter: drop-shadow(0 0 5px rgba(253, 224, 71, 0.8)); }
+        .target-group { font-size: 14px; color: #ffffff; font-weight: bold; margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 15px; border-top: 2px solid rgba(255,255,255,0.3); padding-top: 10px; width: 100%; }
+        .target-item { text-shadow: 1px 1px 2px rgba(0,0,0,0.8); text-align: left; }
+        .target-item.gold { color: #fbbf24; }
+        .best-time-label { margin-top: 12px; font-size: 15px; color: #fbbf24; font-family: 'Courier New', monospace; font-weight: bold; background: rgba(0,0,0,0.2); padding: 2px 10px; border-radius: 5px; }
+        .lv1 { background: #10b981; } .lv2 { background: #059669; } .lv3 { background: #3b82f6; } .lv4 { background: #2563eb; } .lv5 { background: #fbbf24; color: #000; } 
+        .lv6 { background: #d97706; } .lv7 { background: #ea580c; } .lv8 { background: #f43f5e; } .lv9 { background: #e11d48; } .lv10 { background: #9f1239; }
+        .lv5 .target-group { color: #000; border-color: rgba(0,0,0,0.3); }
+        #back-to-menu { position: absolute; top: 20px; left: 20px; padding: 12px 24px; background: #334155; color: white; border: 2px solid #94a3b8; border-radius: 10px; cursor: pointer; z-index: 150; display: none; font-weight: bold; }
+        #level-display { position: absolute; top: 20px; right: 20px; background: #fff; color: #000; padding: 8px 20px; border-radius: 30px; font-weight: bold; z-index: 150; display: none; border: 2px solid #3b82f6; }
+        #pause-btn { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; background: rgba(255,255,255,0.1); color: white; border: 2px solid white; border-radius: 10px; cursor: pointer; z-index: 150; display: none; font-weight: bold; }
+        #ui { position: absolute; top: 80px; width: 100%; text-align: center; color: #fff; pointer-events: none; z-index: 100; display: none; }
+        #timer-display { font-size: 36px; font-family: 'Courier New', monospace; color: #fbbf24; margin-top: 5px; text-shadow: 2px 2px #000; }
+        #target-hint { font-size: 15px; font-weight: bold; color: #ffffff; background: rgba(0,0,0,0.7); padding: 10px 25px; border-radius: 15px; border: 2px solid #3b82f6; display: inline-block; margin-top: 10px; line-height: 1.6; }
+        #result { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; text-align: center; display: none; z-index: 101; text-shadow: 6px 6px 10px #000; }
+        .res-text { font-size: 72px; font-weight: bold; color: #fff; padding: 0 20px; line-height: 1.2; }
+        .res-crown { font-size: 100px; color: #fde047; margin: 15px 0; display: none; filter: drop-shadow(0 0 25px #fbbf24); }
+        .res-stars { font-size: 80px; color: #fbbf24; margin: 10px 0; letter-spacing: 5px; }
+        #final-time { font-size: 48px !important; color: #fff; font-weight: bold; margin: 15px 0; font-family: 'Courier New', monospace; }
+        .res-retry { font-size: 28px; color: #fff; margin-top: 30px; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="mgmt-overlay"><div id="mgmt-window"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;"><h3 style="margin:0; font-size:24px;">メンバーをえらぶ</h3><button style="padding:10px 20px; background:#64748b; border:none; border-radius:10px; color:white; cursor:pointer; font-weight:bold;" onclick="toggleMgmt(false)">もどる</button></div><div id="mgmt-list" style="flex:1; overflow-y:auto; margin-bottom:20px;"></div><div style="display:flex; gap:10px; border-top:2px solid #f1f5f9; padding-top:20px;"><input type="text" id="new-name-input" placeholder="あたらしい なまえ" maxlength="8" style="flex:1; padding:12px; border-radius:10px; border:2px solid #cbd5e1;"><button style="background:#10b981; color:white; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:bold;" onclick="addMember()">ついか</button></div></div></div>
+    <div id="menu">
+        <div class="menu-title">Flagship-8 ポンポン・リフト</div>
+        <div id="active-player-display"><span id="current-name">ゲストさん</span><button class="mgmt-open-btn" onclick="toggleMgmt(true)">メンバー管理</button></div>
+        <div class="button-grid" id="level-grid"></div>
+    </div>
+    <button id="back-to-menu" onclick="location.reload()">メニューにもどる</button>
+    <button id="pause-btn" onclick="togglePause()">II 一時停止</button>
+    <div id="level-display">Lv.1</div>
+    <div id="ui"><div style="font-size: 26px; font-weight: bold;">ゴールまで: <span id="dist">----</span> m</div><div style="width:40%; height:16px; background:#1e293b; margin:10px auto; border-radius:8px; overflow:hidden; border:2px solid #475569;"><div id="progress-bar" style="width:0%; height:100%; background: linear-gradient(90deg, #3b82f6, #E60012);"></div></div><div id="timer-display">TIME: 0.000s</div><div id="target-hint"></div></div>
+    <div id="result"><div class="res-text" id="res-msg"></div><div id="res-crown" class="res-crown">👑</div><div class="res-stars" id="res-stars"></div><div id="final-time"></div><div class="res-retry">クリックして もういちど</div></div>
+
+    <script>
+        const { Engine, Render, Runner, Bodies, Composite, Body, Vector, Events } = Matter;
+        let engine, render, runner, ball, gameState = "menu", currentLevel = 1, goalLineX = 10000, startTime, pauseStart = 0, pauseOffset = 0, currentStarBase = 0, airPuffs = [];
+        const controlRadius = 1200;
+        let appData = JSON.parse(localStorage.getItem('AirRace_V17_Flagship8_Tight')) || { members: [{ name: "ゲスト", levels: {} }], activeIndex: 0 };
+        function saveToLocal() { localStorage.setItem('AirRace_V17_Flagship8_Tight', JSON.stringify(appData)); }
+        function toggleMgmt(show) { document.getElementById('mgmt-overlay').style.display = show ? 'flex' : 'none'; if(show) updateMgmtList(); }
+        function updateMgmtList() { const list = document.getElementById('mgmt-list'); list.innerHTML = ""; appData.members.forEach((m, i) => { const row = document.createElement('div'); row.className = `member-row ${i === appData.activeIndex ? 'active' : ''}`; row.innerHTML = `<div style="cursor:pointer; flex:1; font-weight:bold; font-size:18px;" onclick="selectMember(${i})">${m.name} さん</div><button class="del-btn" onclick="deleteMember(${i})">削除</button>`; list.appendChild(row); }); }
+        function addMember() { const input = document.getElementById('new-name-input'); const name = input.value.trim(); if (!name || appData.members.length >= 20) return; appData.members.push({ name: name, levels: {} }); appData.activeIndex = appData.members.length - 1; input.value = ""; saveToLocal(); updateMgmtList(); createMenu(); }
+        function selectMember(index) { appData.activeIndex = index; saveToLocal(); toggleMgmt(false); createMenu(); }
+        function deleteMember(index) { if (appData.members.length <= 1) return; if (!confirm(`削除しますか？`)) return; appData.members.splice(index, 1); if (appData.activeIndex >= appData.members.length) appData.activeIndex = 0; saveToLocal(); updateMgmtList(); createMenu(); }
+
+        const settings = { 1:{d:6500,starBase:7.8,prob:0.05,speed:0.008,gap:[600,1000]}, 2:{d:9500,starBase:11.4,prob:0.15,speed:0.015,gap:[500,900]}, 3:{d:13000,starBase:16.0,prob:0.25,speed:0.022,gap:[450,850]}, 4:{d:16000,starBase:18.8,prob:0.3,speed:0.028,gap:[600,900]}, 5:{d:20000,starBase:23.8,prob:0.4,speed:0.035,gap:[550,850]}, 6:{d:25000,starBase:30.5,prob:0.45,speed:0.045,gap:[500,800]}, 7:{d:32000,starBase:43.0,prob:0.5,speed:0.055,gap:[450,750]}, 8:{d:40000,starBase:55.0,prob:0.55,speed:0.065,gap:[400,700]}, 9:{d:50000,starBase:71.0,prob:0.65,speed:0.075,gap:[260,450]}, 10:{d:60000,starBase:88.0,prob:0.75,speed:0.095,gap:[180,300]} };
+        const starMultipliers = { 8:1.0, 7:1.2, 6:1.5, 5:2.0, 4:2.8, 3:3.8, 2:5.0, 1:7.0 };
+        
+        function createMenu() { 
+            const curMem = appData.members[appData.activeIndex]; document.getElementById('current-name').innerText = curMem.name + " さん";
+            const grid = document.getElementById('level-grid'); grid.innerHTML = "";
+            const names = ['やさしい','かんたん','ふつう','すこしムズ','むずかしい','けっこうムズ','かなりムズ','プロ','たつじん','げきむず'];
+            for(let i=1; i<=10; i++){
+                const btn = document.createElement('button'); btn.className = `level-btn lv${i}`;
+                const lvData = curMem.levels[i] || {bestStars:0, bestTime:Infinity, crownCounts:0, starCounts:{}};
+                const base = settings[i].starBase;
+                const stars = '★'.repeat(lvData.bestStars).padEnd(8, '☆');
+                let targetHTML = '<div class="target-group">';
+                for(let s=8; s>=1; s--) { 
+                    const t = (base * starMultipliers[s]).toFixed(1); 
+                    // ★獲得回数の表示を追加
+                    const count = (lvData.starCounts && lvData.starCounts[s]) ? lvData.starCounts[s] : 0;
+                    targetHTML += `<div class="target-item ${s===8?'gold':''}">★${s}: ${t}s (${count})</div>`; 
+                }
+                targetHTML += '</div>';
+                btn.innerHTML = `Lv.${i} ${names[i-1]}<div class="star-mark">${stars.slice(0,4)}<br>${stars.slice(4,8)}</div><div class="crown-mark">👑<span>×${lvData.crownCounts || 0}</span></div>${targetHTML}<div class="best-time-label">BEST: ${lvData.bestTime === Infinity ? "--.---" : lvData.bestTime.toFixed(3)}s</div>`;
+                btn.onclick = () => initGame(i); grid.appendChild(btn);
+            }
+        }
+        createMenu();
+        function togglePause() {
+            if(gameState === "playing") { gameState = "paused"; pauseStart = Date.now(); document.getElementById('pause-btn').innerText = "▶ 再開"; runner.enabled = false; } 
+            else if(gameState === "paused") { gameState = "playing"; pauseOffset += (Date.now() - pauseStart); document.getElementById('pause-btn').innerText = "II 一時停止"; runner.enabled = true; }
+        }
+        function initGame(lv) { 
+            currentLevel = lv; document.getElementById('menu').style.display = 'none'; document.getElementById('back-to-menu').style.display = 'block'; document.getElementById('level-display').style.display = 'block'; document.getElementById('level-display').innerText = `Lv.${lv}`; document.getElementById('pause-btn').style.display = 'block'; document.getElementById('ui').style.display = 'block'; 
+            const base = settings[lv].starBase;
+            let hintHTML = '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 5px 15px;">';
+            for(let s=8; s>=1; s--) { hintHTML += `<span style="${s===8?'color:#fbbf24':''}">★${s}:${(base * starMultipliers[s]).toFixed(1)}s</span>`; }
+            hintHTML += '</div>';
+            document.getElementById('target-hint').innerHTML = hintHTML; 
+            startGame(); 
+        }
+        function startGame() {
+            if (render) { Render.stop(render); Runner.stop(runner); if(render.canvas) render.canvas.remove(); }
+            document.getElementById('result').style.display = 'none'; document.getElementById('res-crown').style.display = 'none';
+            document.getElementById('pause-btn').innerText = "II 一時停止";
+            gameState = "ready"; startTime = 0; pauseOffset = 0; airPuffs = [];
+            const config = settings[currentLevel]; goalLineX = config.d; currentStarBase = config.starBase;
+            engine = Engine.create(); engine.world.gravity.y = 1.35;
+            const vHeight = window.innerHeight - 38; 
+            render = Render.create({ element: document.body, engine: engine, options: { width: window.innerWidth, height: vHeight, wireframes: false, background: '#020617', hasBounds: true } });
+            ball = Bodies.circle(300, 50, 35, { frictionAir: 0.045, density: 0.001, restitution: 0.5, friction: 0.1, inertia: Infinity, render: { visible: false }, label: 'ball' });
+            const ground = Bodies.rectangle(goalLineX/2+500, vHeight + 50, goalLineX+20000, 100, { isStatic: true, render: { visible: false }, label: 'danger' });
+            const ceiling = Bodies.rectangle(goalLineX/2+500, -90, goalLineX+20000, 200, { isStatic: true, render: { fillStyle: '#1e293b' } });
+            const startPlat = Bodies.rectangle(300, vHeight - 60, 400, 40, { isStatic: true, render: { fillStyle: '#10b981' } });
+            const goal = Bodies.rectangle(goalLineX, window.innerHeight/2, 150, vHeight, { isStatic: true, isSensor: true, render: { fillStyle: '#fbbf24', opacity: 0.8 }, label: 'goal' });
+            Composite.add(engine.world, [ball, ground, ceiling, startPlat, goal]);
+            let curX = 1000; let lastSide = "top"; 
+            while (curX < goalLineX - 900) { 
+                let h = 220 + Math.random() * (260 + currentLevel * 30); if (h > vHeight - 200) h = vHeight - 200; 
+                const isMoving = Math.random() < config.prob;
+                let side = (currentLevel >= 6 && !isMoving) ? (lastSide === "top" ? "bottom" : "top") : (Math.random() > 0.5 ? "top" : "bottom"); lastSide = side;
+                const obs = Bodies.rectangle(curX, side === "top" ? h/2 : vHeight-h/2, 65, h, { isStatic: true, render: { fillStyle: isMoving ? '#0040C0' : '#1e293b' }, label: 'safe' }); 
+                if (isMoving) { obs.isMoving = true; obs.targetY = Math.random()*vHeight; obs.baseSpeed = config.speed; } 
+                Composite.add(engine.world, obs); curX += (config.gap[0] + Math.random()*(config.gap[1]-config.gap[0])); 
+            }
+            Events.on(engine, 'beforeUpdate', () => { 
+                Composite.allBodies(engine.world).forEach(b => { if (b.isMoving) { const dy = b.targetY - b.position.y; if (Math.abs(dy) < 10) b.targetY = Math.random()*vHeight; const noise = 0.5 + Math.sin(Date.now() * 0.005 + b.id) * 0.5; const dynamicSpeed = b.baseSpeed * (0.6 + noise * (0.8 + currentLevel * 0.1)); Body.setPosition(b, { x: b.position.x, y: b.position.y + dy * dynamicSpeed }); } }); 
+                if (gameState === "playing" && ball.position.y < 50) Body.setPosition(ball, { x: ball.position.x, y: 50 }); 
+            });
+            Events.on(engine, 'collisionStart', (e) => { if (gameState !== "playing") return; e.pairs.forEach(p => { const l = [p.bodyA.label, p.bodyB.label]; if (l.includes('ball') && l.includes('danger')) endGame("残念！ また挑戦しよう！", "#E60012", false); else if (l.includes('ball') && l.includes('goal')) endGame("", "#fbbf24", true); }); });
+            Events.on(render, 'afterRender', () => {
+                const ctx = render.context; const scrollX = render.bounds.min.x;
+                Composite.allBodies(engine.world).forEach(b => { if(b.isMoving) { ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = "#0040C0"; ctx.fillStyle = b.render.fillStyle; ctx.fillRect(b.position.x-scrollX-32, b.position.y-(b.bounds.max.y-b.bounds.min.y)/2, 65, (b.bounds.max.y-b.bounds.min.y)); ctx.restore(); } });
+                airPuffs.forEach((p, i) => { ctx.strokeStyle = `rgba(255, 255, 255, ${p.alpha})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x-scrollX+(1-p.alpha)*80*p.dir.x, p.y+(1-p.alpha)*80*p.dir.y, p.radius, 0, Math.PI*2); ctx.stroke(); if(gameState==="playing"){p.radius+=7; p.alpha-=0.12;} if(p.alpha<=0) airPuffs.splice(i,1); });
+                if (gameState !== "menu") { ctx.beginPath(); ctx.arc(ball.position.x-scrollX, ball.position.y, 35, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 4; ctx.stroke(); }
+            });
+            Render.run(render); Runner.run(runner = Runner.create(), engine); animate();
+        }
+        function endGame(text, color, win) {
+            gameState = win ? "win" : "ended"; const fTime = parseFloat(((Date.now()-startTime-pauseOffset)/1000).toFixed(3));
+            const res = document.getElementById('result'); res.style.display = 'block'; document.getElementById('pause-btn').style.display = 'none';
+            if(win) {
+                const curMem = appData.members[appData.activeIndex]; if(!curMem.levels[currentLevel]) curMem.levels[currentLevel] = {bestStars:0, bestTime:Infinity, crownCounts:0, starCounts:{}};
+                const lv = curMem.levels[currentLevel];
+                let s = 1; for(let i=8; i>=2; i--) { if(fTime < currentStarBase * starMultipliers[i]) { s = i; break; } }
+                
+                // ★スター獲得回数のインクリメント
+                if(!lv.starCounts) lv.starCounts = {};
+                lv.starCounts[s] = (lv.starCounts[s] || 0) + 1;
+
+                let isPB = false; if(s === 8 && fTime < lv.bestTime) { lv.crownCounts = (lv.crownCounts || 0) + 1; isPB = true; document.getElementById('res-crown').style.display = 'block'; }
+                if(s > lv.bestStars) lv.bestStars = s; if(fTime < lv.bestTime) lv.bestTime = fTime; saveToLocal();
+                document.getElementById('res-msg').innerText = s >= 7 ? "究極のフラッグシップ記録！" : (s >= 5 ? "ハイパフォーマンスな走り！" : "完走おめでとう！");
+                document.getElementById('res-msg').style.color = "#fbbf24";
+                document.getElementById('res-stars').innerText = "★".repeat(s); document.getElementById('final-time').innerText = `タイム：${fTime}秒`;
+            } else { document.getElementById('res-msg').innerText = text; document.getElementById('res-msg').style.color = color; document.getElementById('res-stars').innerText = ""; document.getElementById('final-time').innerText = ""; }
+        }
+        window.addEventListener('mousedown', (e) => { 
+            if (gameState === "ended" || gameState === "win") { startGame(); return; } 
+            if (gameState === "paused") return; 
+            if (gameState === "menu" || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return; 
+            if (gameState === "ready") { gameState = "playing"; startTime = Date.now(); }
+            const mousePos = { x: e.clientX + (render?render.bounds.min.x:0), y: e.clientY + (render?render.bounds.min.y:0) }; 
+            let delta = Vector.sub(ball.position, mousePos); 
+            if (Vector.magnitude(delta) < controlRadius) { if (delta.x < 0) delta.x = 0.15; if (delta.y > 0) delta.y = -0.4; const forceMagnitude = Math.min(0.42, 250 / Vector.magnitude(delta)); Body.applyForce(ball, ball.position, Vector.mult(Vector.normalise(delta), forceMagnitude)); airPuffs.push({ x: mousePos.x, y: mousePos.y, radius: 5, alpha: 1.0, dir: Vector.normalise(delta) }); } 
+        });
+        function animate() { requestAnimationFrame(animate); if (gameState === "ended" || gameState === "win" || gameState === "menu") return; 
+            if (gameState === "playing") { const tx = ball.position.x - window.innerWidth / 3; render.bounds.min.x = Math.max(0, tx); render.bounds.max.x = Math.max(0, tx) + window.innerWidth; document.getElementById('dist').innerText = Math.max(0, Math.floor(goalLineX - ball.position.x)); document.getElementById('progress-bar').style.width = `${(ball.position.x / goalLineX) * 100}%`; document.getElementById('timer-display').innerText = `TIME: ${((Date.now()-startTime-pauseOffset)/1000).toFixed(3)}s`; }
+        }
+    </script>
+</body>
+</html>
