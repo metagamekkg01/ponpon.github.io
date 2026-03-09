@@ -2,13 +2,14 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Star wo Mezase! Flagship 8 - Stat Tracker</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #020617; font-family: 'Meiryo', sans-serif; width: 100vw; height: 100vh; border-bottom: 38px solid #E60012; box-sizing: border-box; }
+        body { margin: 0; overflow: hidden; background: #020617; font-family: 'Meiryo', sans-serif; width: 100vw; height: 100vh; border-bottom: 38px solid #E60012; box-sizing: border-box; touch-action: none; /* 【追加】スマホでのスワイプによる画面スクロールを防止 */ }
         canvas { display: block; vertical-align: bottom; }
-        #menu { position: absolute; width: 100%; height: 100%; background: #020617; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; color: white; overflow-y: auto; padding: 40px 0; }
-        .menu-title { font-size: 32px; font-weight: bold; margin-bottom: 15px; color: #fbbf24; }
+        #menu { position: absolute; width: 100%; height: 100%; background: #020617; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 200; color: white; overflow-y: auto; padding: 40px 0; }
+        .menu-title { font-size: 32px; font-weight: bold; margin-bottom: 15px; color: #fbbf24; text-align: center; }
         #active-player-display { background: rgba(255,255,255,0.05); padding: 15px 30px; border-radius: 20px; border: 2px solid #3b82f6; margin-bottom: 20px; text-align: center; }
         #current-name { font-size: 24px; color: #fbbf24; font-weight: bold; margin-bottom: 10px; display: block; }
         .mgmt-open-btn { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
@@ -17,8 +18,8 @@
         .member-row { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; margin-bottom: 8px; padding: 10px 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
         .member-row.active { border-color: #3b82f6; background: #eff6ff; }
         .del-btn { background: #E60012; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
-        .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 95%; max-width: 900px; }
-        .level-btn { padding: 20px; font-size: 20px; font-weight: bold; border-radius: 40px; border: none; cursor: pointer; transition: 0.2s; color: white; position: relative; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+        .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 95%; max-width: 900px; padding-bottom: 40px; }
+        .level-btn { padding: 20px; font-size: 20px; font-weight: bold; border-radius: 40px; border: none; cursor: pointer; transition: 0.2s; color: white; position: relative; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; touch-action: manipulation; }
         .star-mark { position: absolute; top: 15px; right: 20px; font-size: 13px; color: #fbbf24; letter-spacing: -2px; display: flex; flex-direction: column; align-items: flex-end; }
         .crown-mark { position: absolute; top: 65px; right: 20px; font-size: 20px; color: #fde047; filter: drop-shadow(0 0 5px rgba(253, 224, 71, 0.8)); }
         .target-group { font-size: 14px; color: #ffffff; font-weight: bold; margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 15px; border-top: 2px solid rgba(255,255,255,0.3); padding-top: 10px; width: 100%; }
@@ -41,6 +42,22 @@
         #final-time { font-size: 48px !important; color: #fff; font-weight: bold; margin: 15px 0; font-family: 'Courier New', monospace; }
         .res-retry { font-size: 28px; color: #fff; margin-top: 30px; animation: blink 1s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* 【追加】スマホ用（画面幅が600px以下）のレイアウト調整 */
+        @media (max-width: 600px) {
+            .menu-title { font-size: 24px; }
+            .button-grid { grid-template-columns: 1fr; /* 2列から1列に変更 */ gap: 10px; }
+            .level-btn { min-height: 200px; padding: 15px; }
+            .target-group { grid-template-columns: 1fr 1fr; font-size: 12px; }
+            #ui div:first-child { font-size: 18px !important; }
+            #timer-display { font-size: 28px; }
+            .res-text { font-size: 36px; }
+            .res-stars { font-size: 50px; }
+            #final-time { font-size: 32px !important; }
+            .res-retry { font-size: 20px; }
+            #target-hint { padding: 5px 10px; font-size: 12px; }
+            #target-hint > div { gap: 2px 8px; }
+        }
     </style>
 </head>
 <body>
@@ -50,11 +67,11 @@
         <div id="active-player-display"><span id="current-name">ゲストさん</span><button class="mgmt-open-btn" onclick="toggleMgmt(true)">メンバー管理</button></div>
         <div class="button-grid" id="level-grid"></div>
     </div>
-    <button id="back-to-menu" onclick="location.reload()">メニューにもどる</button>
-    <button id="pause-btn" onclick="togglePause()">II 一時停止</button>
+    <button id="back-to-menu" onclick="location.reload()">もどる</button>
+    <button id="pause-btn" onclick="togglePause()">II</button>
     <div id="level-display">Lv.1</div>
     <div id="ui"><div style="font-size: 26px; font-weight: bold;">ゴールまで: <span id="dist">----</span> m</div><div style="width:40%; height:16px; background:#1e293b; margin:10px auto; border-radius:8px; overflow:hidden; border:2px solid #475569;"><div id="progress-bar" style="width:0%; height:100%; background: linear-gradient(90deg, #3b82f6, #E60012);"></div></div><div id="timer-display">TIME: 0.000s</div><div id="target-hint"></div></div>
-    <div id="result"><div class="res-text" id="res-msg"></div><div id="res-crown" class="res-crown">👑</div><div class="res-stars" id="res-stars"></div><div id="final-time"></div><div class="res-retry">クリックして もういちど</div></div>
+    <div id="result"><div class="res-text" id="res-msg"></div><div id="res-crown" class="res-crown">👑</div><div class="res-stars" id="res-stars"></div><div id="final-time"></div><div class="res-retry">タップして もういちど</div></div>
 
     <script>
         const { Engine, Render, Runner, Bodies, Composite, Body, Vector, Events } = Matter;
@@ -83,7 +100,6 @@
                 let targetHTML = '<div class="target-group">';
                 for(let s=8; s>=1; s--) { 
                     const t = (base * starMultipliers[s]).toFixed(1); 
-                    // ★獲得回数の表示を追加
                     const count = (lvData.starCounts && lvData.starCounts[s]) ? lvData.starCounts[s] : 0;
                     targetHTML += `<div class="target-item ${s===8?'gold':''}">★${s}: ${t}s (${count})</div>`; 
                 }
@@ -94,8 +110,8 @@
         }
         createMenu();
         function togglePause() {
-            if(gameState === "playing") { gameState = "paused"; pauseStart = Date.now(); document.getElementById('pause-btn').innerText = "▶ 再開"; runner.enabled = false; } 
-            else if(gameState === "paused") { gameState = "playing"; pauseOffset += (Date.now() - pauseStart); document.getElementById('pause-btn').innerText = "II 一時停止"; runner.enabled = true; }
+            if(gameState === "playing") { gameState = "paused"; pauseStart = Date.now(); document.getElementById('pause-btn').innerText = "▶"; runner.enabled = false; } 
+            else if(gameState === "paused") { gameState = "playing"; pauseOffset += (Date.now() - pauseStart); document.getElementById('pause-btn').innerText = "II"; runner.enabled = true; }
         }
         function initGame(lv) { 
             currentLevel = lv; document.getElementById('menu').style.display = 'none'; document.getElementById('back-to-menu').style.display = 'block'; document.getElementById('level-display').style.display = 'block'; document.getElementById('level-display').innerText = `Lv.${lv}`; document.getElementById('pause-btn').style.display = 'block'; document.getElementById('ui').style.display = 'block'; 
@@ -109,7 +125,7 @@
         function startGame() {
             if (render) { Render.stop(render); Runner.stop(runner); if(render.canvas) render.canvas.remove(); }
             document.getElementById('result').style.display = 'none'; document.getElementById('res-crown').style.display = 'none';
-            document.getElementById('pause-btn').innerText = "II 一時停止";
+            document.getElementById('pause-btn').innerText = "II";
             gameState = "ready"; startTime = 0; pauseOffset = 0; airPuffs = [];
             const config = settings[currentLevel]; goalLineX = config.d; currentStarBase = config.starBase;
             engine = Engine.create(); engine.world.gravity.y = 1.35;
@@ -150,11 +166,7 @@
                 const curMem = appData.members[appData.activeIndex]; if(!curMem.levels[currentLevel]) curMem.levels[currentLevel] = {bestStars:0, bestTime:Infinity, crownCounts:0, starCounts:{}};
                 const lv = curMem.levels[currentLevel];
                 let s = 1; for(let i=8; i>=2; i--) { if(fTime < currentStarBase * starMultipliers[i]) { s = i; break; } }
-                
-                // ★スター獲得回数のインクリメント
-                if(!lv.starCounts) lv.starCounts = {};
-                lv.starCounts[s] = (lv.starCounts[s] || 0) + 1;
-
+                if(!lv.starCounts) lv.starCounts = {}; lv.starCounts[s] = (lv.starCounts[s] || 0) + 1;
                 let isPB = false; if(s === 8 && fTime < lv.bestTime) { lv.crownCounts = (lv.crownCounts || 0) + 1; isPB = true; document.getElementById('res-crown').style.display = 'block'; }
                 if(s > lv.bestStars) lv.bestStars = s; if(fTime < lv.bestTime) lv.bestTime = fTime; saveToLocal();
                 document.getElementById('res-msg').innerText = s >= 7 ? "究極のフラッグシップ記録！" : (s >= 5 ? "ハイパフォーマンスな走り！" : "完走おめでとう！");
@@ -162,15 +174,37 @@
                 document.getElementById('res-stars').innerText = "★".repeat(s); document.getElementById('final-time').innerText = `タイム：${fTime}秒`;
             } else { document.getElementById('res-msg').innerText = text; document.getElementById('res-msg').style.color = color; document.getElementById('res-stars').innerText = ""; document.getElementById('final-time').innerText = ""; }
         }
-        window.addEventListener('mousedown', (e) => { 
+
+        // 【追加・変更】マウス操作とスマホのタッチ操作を統合する関数
+        function handleInput(clientX, clientY, targetTagName) {
             if (gameState === "ended" || gameState === "win") { startGame(); return; } 
             if (gameState === "paused") return; 
-            if (gameState === "menu" || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return; 
+            if (gameState === "menu" || targetTagName === 'INPUT' || targetTagName === 'BUTTON') return; 
             if (gameState === "ready") { gameState = "playing"; startTime = Date.now(); }
-            const mousePos = { x: e.clientX + (render?render.bounds.min.x:0), y: e.clientY + (render?render.bounds.min.y:0) }; 
+            const mousePos = { x: clientX + (render?render.bounds.min.x:0), y: clientY + (render?render.bounds.min.y:0) }; 
             let delta = Vector.sub(ball.position, mousePos); 
-            if (Vector.magnitude(delta) < controlRadius) { if (delta.x < 0) delta.x = 0.15; if (delta.y > 0) delta.y = -0.4; const forceMagnitude = Math.min(0.42, 250 / Vector.magnitude(delta)); Body.applyForce(ball, ball.position, Vector.mult(Vector.normalise(delta), forceMagnitude)); airPuffs.push({ x: mousePos.x, y: mousePos.y, radius: 5, alpha: 1.0, dir: Vector.normalise(delta) }); } 
+            if (Vector.magnitude(delta) < controlRadius) { 
+                if (delta.x < 0) delta.x = 0.15; if (delta.y > 0) delta.y = -0.4; 
+                const forceMagnitude = Math.min(0.42, 250 / Vector.magnitude(delta)); 
+                Body.applyForce(ball, ball.position, Vector.mult(Vector.normalise(delta), forceMagnitude)); 
+                airPuffs.push({ x: mousePos.x, y: mousePos.y, radius: 5, alpha: 1.0, dir: Vector.normalise(delta) }); 
+            } 
+        }
+
+        // パソコンのマウス操作用
+        window.addEventListener('mousedown', (e) => { 
+            handleInput(e.clientX, e.clientY, e.target.tagName);
         });
+
+        // 【追加】スマホのタッチ操作用
+        window.addEventListener('touchstart', (e) => {
+            // ボタンや入力欄以外をタッチした時は、スマホのスクロールを無効化する
+            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                e.preventDefault(); 
+            }
+            handleInput(e.touches[0].clientX, e.touches[0].clientY, e.target.tagName);
+        }, { passive: false });
+
         function animate() { requestAnimationFrame(animate); if (gameState === "ended" || gameState === "win" || gameState === "menu") return; 
             if (gameState === "playing") { const tx = ball.position.x - window.innerWidth / 3; render.bounds.min.x = Math.max(0, tx); render.bounds.max.x = Math.max(0, tx) + window.innerWidth; document.getElementById('dist').innerText = Math.max(0, Math.floor(goalLineX - ball.position.x)); document.getElementById('progress-bar').style.width = `${(ball.position.x / goalLineX) * 100}%`; document.getElementById('timer-display').innerText = `TIME: ${((Date.now()-startTime-pauseOffset)/1000).toFixed(3)}s`; }
         }
