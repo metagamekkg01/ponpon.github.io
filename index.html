@@ -6,18 +6,15 @@
     <title>Star wo Mezase! Flagship 8 - Stat Tracker</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #020617; font-family: 'Meiryo', sans-serif; width: 100vw; height: 100vh; border-bottom: 38px solid #E60012; box-sizing: border-box; touch-action: none; /* 【追加】スマホでのスワイプによる画面スクロールを防止 */ }
+        body { margin: 0; overflow: hidden; background: #020617; font-family: 'Meiryo', sans-serif; width: 100vw; height: 100vh; border-bottom: 38px solid #E60012; box-sizing: border-box; touch-action: none; }
         canvas { display: block; vertical-align: bottom; }
+        
+        /* メニュー画面 */
         #menu { position: absolute; width: 100%; height: 100%; background: #020617; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 200; color: white; overflow-y: auto; padding: 40px 0; }
         .menu-title { font-size: 32px; font-weight: bold; margin-bottom: 15px; color: #fbbf24; text-align: center; }
         #active-player-display { background: rgba(255,255,255,0.05); padding: 15px 30px; border-radius: 20px; border: 2px solid #3b82f6; margin-bottom: 20px; text-align: center; }
         #current-name { font-size: 24px; color: #fbbf24; font-weight: bold; margin-bottom: 10px; display: block; }
         .mgmt-open-btn { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        #mgmt-overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; display: none; align-items: center; justify-content: center; }
-        #mgmt-window { background: #ffffff; width: 90%; max-width: 500px; max-height: 80%; border-radius: 20px; border: 3px solid #3b82f6; padding: 25px; display: flex; flex-direction: column; color: #0f172a; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
-        .member-row { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; margin-bottom: 8px; padding: 10px 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
-        .member-row.active { border-color: #3b82f6; background: #eff6ff; }
-        .del-btn { background: #E60012; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
         .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 95%; max-width: 900px; padding-bottom: 40px; }
         .level-btn { padding: 20px; font-size: 20px; font-weight: bold; border-radius: 40px; border: none; cursor: pointer; transition: 0.2s; color: white; position: relative; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; touch-action: manipulation; }
         .star-mark { position: absolute; top: 15px; right: 20px; font-size: 13px; color: #fbbf24; letter-spacing: -2px; display: flex; flex-direction: column; align-items: flex-end; }
@@ -26,15 +23,33 @@
         .target-item { text-shadow: 1px 1px 2px rgba(0,0,0,0.8); text-align: left; }
         .target-item.gold { color: #fbbf24; }
         .best-time-label { margin-top: 12px; font-size: 15px; color: #fbbf24; font-family: 'Courier New', monospace; font-weight: bold; background: rgba(0,0,0,0.2); padding: 2px 10px; border-radius: 5px; }
+        
+        /* レベルごとの色 */
         .lv1 { background: #10b981; } .lv2 { background: #059669; } .lv3 { background: #3b82f6; } .lv4 { background: #2563eb; } .lv5 { background: #fbbf24; color: #000; } 
         .lv6 { background: #d97706; } .lv7 { background: #ea580c; } .lv8 { background: #f43f5e; } .lv9 { background: #e11d48; } .lv10 { background: #9f1239; }
         .lv5 .target-group { color: #000; border-color: rgba(0,0,0,0.3); }
+
+        /* メンバー管理ウィンドウ */
+        #mgmt-overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; display: none; align-items: center; justify-content: center; }
+        #mgmt-window { background: #ffffff; width: 90%; max-width: 500px; max-height: 80%; border-radius: 20px; border: 3px solid #3b82f6; padding: 25px; display: flex; flex-direction: column; color: #0f172a; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+        .member-row { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; margin-bottom: 8px; padding: 10px 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .member-row.active { border-color: #3b82f6; background: #eff6ff; }
+        .del-btn { background: #E60012; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+
+        /* ゲーム中UI（PC基本設定） */
         #back-to-menu { position: absolute; top: 20px; left: 20px; padding: 12px 24px; background: #334155; color: white; border: 2px solid #94a3b8; border-radius: 10px; cursor: pointer; z-index: 150; display: none; font-weight: bold; }
         #level-display { position: absolute; top: 20px; right: 20px; background: #fff; color: #000; padding: 8px 20px; border-radius: 30px; font-weight: bold; z-index: 150; display: none; border: 2px solid #3b82f6; }
         #pause-btn { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; background: rgba(255,255,255,0.1); color: white; border: 2px solid white; border-radius: 10px; cursor: pointer; z-index: 150; display: none; font-weight: bold; }
+        
         #ui { position: absolute; top: 80px; width: 100%; text-align: center; color: #fff; pointer-events: none; z-index: 100; display: none; }
+        #dist-display { font-size: 26px; font-weight: bold; }
+        #progress-container { width: 40%; height: 16px; background: #1e293b; margin: 10px auto; border-radius: 8px; overflow: hidden; border: 2px solid #475569; }
+        #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #E60012); }
         #timer-display { font-size: 36px; font-family: 'Courier New', monospace; color: #fbbf24; margin-top: 5px; text-shadow: 2px 2px #000; }
         #target-hint { font-size: 15px; font-weight: bold; color: #ffffff; background: rgba(0,0,0,0.7); padding: 10px 25px; border-radius: 15px; border: 2px solid #3b82f6; display: inline-block; margin-top: 10px; line-height: 1.6; }
+        .hint-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px 15px; }
+
+        /* リザルト画面 */
         #result { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; text-align: center; display: none; z-index: 101; text-shadow: 6px 6px 10px #000; }
         .res-text { font-size: 72px; font-weight: bold; color: #fff; padding: 0 20px; line-height: 1.2; }
         .res-crown { font-size: 100px; color: #fde047; margin: 15px 0; display: none; filter: drop-shadow(0 0 25px #fbbf24); }
@@ -43,34 +58,67 @@
         .res-retry { font-size: 28px; color: #fff; margin-top: 30px; animation: blink 1s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        /* 【追加】スマホ用（画面幅が600px以下）のレイアウト調整 */
+        /* ========================================================
+           スマホ用（画面幅が600px以下）のレイアウト調整を大幅改善
+           ======================================================== */
         @media (max-width: 600px) {
-            .menu-title { font-size: 24px; }
-            .button-grid { grid-template-columns: 1fr; /* 2列から1列に変更 */ gap: 10px; }
-            .level-btn { min-height: 200px; padding: 15px; }
-            .target-group { grid-template-columns: 1fr 1fr; font-size: 12px; }
-            #ui div:first-child { font-size: 18px !important; }
-            #timer-display { font-size: 28px; }
-            .res-text { font-size: 36px; }
-            .res-stars { font-size: 50px; }
-            #final-time { font-size: 32px !important; }
-            .res-retry { font-size: 20px; }
-            #target-hint { padding: 5px 10px; font-size: 12px; }
-            #target-hint > div { gap: 2px 8px; }
+            /* メニュー画面の最適化 */
+            .menu-title { font-size: 22px; margin-top: 10px; }
+            #active-player-display { padding: 10px 15px; margin-bottom: 15px; }
+            #current-name { font-size: 18px; }
+            .button-grid { grid-template-columns: 1fr; gap: 12px; width: 90%; padding-bottom: 30px; }
+            .level-btn { min-height: 180px; padding: 15px; font-size: 18px; }
+            .crown-mark { top: 40px; right: 15px; font-size: 18px; }
+            .target-group { grid-template-columns: 1fr 1fr; font-size: 11px; gap: 5px 10px; }
+
+            /* 上部の操作ボタン類（小さくして端に寄せる） */
+            #back-to-menu { top: 10px; left: 10px; padding: 8px 12px; font-size: 12px; border-width: 1px; }
+            #pause-btn { top: 10px; padding: 8px 16px; font-size: 12px; border-width: 1px; }
+            #level-display { top: 10px; right: 10px; padding: 6px 12px; font-size: 12px; border-width: 1px; }
+
+            /* ゲーム中のUI（邪魔にならないようスッキリと） */
+            #ui { top: 55px; } /* ボタンの下に配置 */
+            #dist-display { font-size: 16px; }
+            #progress-container { width: 80%; height: 8px; margin: 5px auto; }
+            #timer-display { font-size: 22px; margin-top: 2px; }
+            
+            /* ヒントは4列だと潰れるので2列に変更 */
+            #target-hint { padding: 5px 10px; font-size: 11px; margin-top: 5px; }
+            .hint-grid { grid-template-columns: repeat(2, 1fr); gap: 2px 10px; }
+
+            /* リザルト画面（画面に収まるように縮小） */
+            .res-text { font-size: 32px; padding: 0 10px; }
+            .res-crown { font-size: 60px; margin: 5px 0; }
+            .res-stars { font-size: 36px; margin: 5px 0; letter-spacing: 2px; }
+            #final-time { font-size: 28px !important; margin: 10px 0; }
+            .res-retry { font-size: 18px; margin-top: 15px; }
+            
+            /* メンバー管理ウィンドウ */
+            #mgmt-window { width: 95%; padding: 15px; }
+            h3 { font-size: 18px !important; }
         }
     </style>
 </head>
 <body>
     <div id="mgmt-overlay"><div id="mgmt-window"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;"><h3 style="margin:0; font-size:24px;">メンバーをえらぶ</h3><button style="padding:10px 20px; background:#64748b; border:none; border-radius:10px; color:white; cursor:pointer; font-weight:bold;" onclick="toggleMgmt(false)">もどる</button></div><div id="mgmt-list" style="flex:1; overflow-y:auto; margin-bottom:20px;"></div><div style="display:flex; gap:10px; border-top:2px solid #f1f5f9; padding-top:20px;"><input type="text" id="new-name-input" placeholder="あたらしい なまえ" maxlength="8" style="flex:1; padding:12px; border-radius:10px; border:2px solid #cbd5e1;"><button style="background:#10b981; color:white; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:bold;" onclick="addMember()">ついか</button></div></div></div>
+    
     <div id="menu">
         <div class="menu-title">Flagship-8 ポンポン・リフト</div>
         <div id="active-player-display"><span id="current-name">ゲストさん</span><button class="mgmt-open-btn" onclick="toggleMgmt(true)">メンバー管理</button></div>
         <div class="button-grid" id="level-grid"></div>
     </div>
+    
     <button id="back-to-menu" onclick="location.reload()">もどる</button>
     <button id="pause-btn" onclick="togglePause()">II</button>
     <div id="level-display">Lv.1</div>
-    <div id="ui"><div style="font-size: 26px; font-weight: bold;">ゴールまで: <span id="dist">----</span> m</div><div style="width:40%; height:16px; background:#1e293b; margin:10px auto; border-radius:8px; overflow:hidden; border:2px solid #475569;"><div id="progress-bar" style="width:0%; height:100%; background: linear-gradient(90deg, #3b82f6, #E60012);"></div></div><div id="timer-display">TIME: 0.000s</div><div id="target-hint"></div></div>
+    
+    <div id="ui">
+        <div id="dist-display">ゴールまで: <span id="dist">----</span> m</div>
+        <div id="progress-container"><div id="progress-bar"></div></div>
+        <div id="timer-display">TIME: 0.000s</div>
+        <div id="target-hint"></div>
+    </div>
+    
     <div id="result"><div class="res-text" id="res-msg"></div><div id="res-crown" class="res-crown">👑</div><div class="res-stars" id="res-stars"></div><div id="final-time"></div><div class="res-retry">タップして もういちど</div></div>
 
     <script>
@@ -109,19 +157,22 @@
             }
         }
         createMenu();
+        
         function togglePause() {
             if(gameState === "playing") { gameState = "paused"; pauseStart = Date.now(); document.getElementById('pause-btn').innerText = "▶"; runner.enabled = false; } 
             else if(gameState === "paused") { gameState = "playing"; pauseOffset += (Date.now() - pauseStart); document.getElementById('pause-btn').innerText = "II"; runner.enabled = true; }
         }
+        
         function initGame(lv) { 
             currentLevel = lv; document.getElementById('menu').style.display = 'none'; document.getElementById('back-to-menu').style.display = 'block'; document.getElementById('level-display').style.display = 'block'; document.getElementById('level-display').innerText = `Lv.${lv}`; document.getElementById('pause-btn').style.display = 'block'; document.getElementById('ui').style.display = 'block'; 
             const base = settings[lv].starBase;
-            let hintHTML = '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 5px 15px;">';
+            let hintHTML = '<div class="hint-grid">';
             for(let s=8; s>=1; s--) { hintHTML += `<span style="${s===8?'color:#fbbf24':''}">★${s}:${(base * starMultipliers[s]).toFixed(1)}s</span>`; }
             hintHTML += '</div>';
             document.getElementById('target-hint').innerHTML = hintHTML; 
             startGame(); 
         }
+        
         function startGame() {
             if (render) { Render.stop(render); Runner.stop(runner); if(render.canvas) render.canvas.remove(); }
             document.getElementById('result').style.display = 'none'; document.getElementById('res-crown').style.display = 'none';
@@ -159,6 +210,7 @@
             });
             Render.run(render); Runner.run(runner = Runner.create(), engine); animate();
         }
+        
         function endGame(text, color, win) {
             gameState = win ? "win" : "ended"; const fTime = parseFloat(((Date.now()-startTime-pauseOffset)/1000).toFixed(3));
             const res = document.getElementById('result'); res.style.display = 'block'; document.getElementById('pause-btn').style.display = 'none';
@@ -175,7 +227,7 @@
             } else { document.getElementById('res-msg').innerText = text; document.getElementById('res-msg').style.color = color; document.getElementById('res-stars').innerText = ""; document.getElementById('final-time').innerText = ""; }
         }
 
-        // 【追加・変更】マウス操作とスマホのタッチ操作を統合する関数
+        // 入力処理（PC・スマホ共通）
         function handleInput(clientX, clientY, targetTagName) {
             if (gameState === "ended" || gameState === "win") { startGame(); return; } 
             if (gameState === "paused") return; 
@@ -191,17 +243,10 @@
             } 
         }
 
-        // パソコンのマウス操作用
-        window.addEventListener('mousedown', (e) => { 
-            handleInput(e.clientX, e.clientY, e.target.tagName);
-        });
-
-        // 【追加】スマホのタッチ操作用
+        window.addEventListener('mousedown', (e) => { handleInput(e.clientX, e.clientY, e.target.tagName); });
+        
         window.addEventListener('touchstart', (e) => {
-            // ボタンや入力欄以外をタッチした時は、スマホのスクロールを無効化する
-            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-                e.preventDefault(); 
-            }
+            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') { e.preventDefault(); }
             handleInput(e.touches[0].clientX, e.touches[0].clientY, e.target.tagName);
         }, { passive: false });
 
